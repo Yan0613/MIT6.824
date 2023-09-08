@@ -15,7 +15,7 @@ import "io/ioutil"
 import "sort"
 
 // for sorting by key.
-type ByKey []mr.KeyValue
+type ByKey []mr.KeyValue//set up a type named ByKey, which type is a slice, and the element is KeyValue
 
 // for sorting by key.
 func (a ByKey) Len() int           { return len(a) }
