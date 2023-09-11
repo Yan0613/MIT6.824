@@ -37,7 +37,7 @@ type TaskInfo struct {
 type CoordinatorStatus int
 
 const (
-	CoordinatorInitializing CoordinatorStatus = iota
+	CoordinatorInitializing CoordinatorStatus = iota//coordinatorini, coordinatorrunning, coordinatorcompleted = 0,1,2 iota用来初始化一系列的整数常量
 	CoordinatorRunning
 	CoordinatorCompleted
 )

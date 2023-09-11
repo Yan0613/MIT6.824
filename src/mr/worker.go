@@ -75,6 +75,9 @@ func CallExample() {
 func call(rpcname string, args interface{}, reply interface{}) bool {
 	// c, err := rpc.DialHTTP("tcp", "127.0.0.1"+":1234")
 	sockname := coordinatorSock()
+
+	//在你提供的代码中，c 是一个变量，它用于表示与协调器（Coordinator）的RPC连接。
+	//而 c.Call 是RPC库（net/rpc）中的一个方法，用于发送RPC请求并接收RPC响应。————generate by chatgpt
 	c, err := rpc.DialHTTP("unix", sockname)
 	if err != nil {
 		log.Fatal("dialing:", err)
