@@ -36,33 +36,32 @@ func ihash(key string) int {
 //
 func Worker(mapf func(string, string) []KeyValue,
 	reducef func(string, []string) string) {
-	if len(os.Args) < 3 {
-		fmt.Fprintf(os.Stderr, "Usage: mrsequential xxx.so inputfiles...\n")
-		os.Exit(1)
-	}//make sure the comment contains 3 args
-	//
-	// read each input file,
-	// pass it to Map,
-	// accumulate the intermediate Map output.
-	//
-	intermediate := []mr.KeyValue{}
-	for _, filename := range os.Args[2:] {
-		file, err := os.Open(filename)
-		if err != nil {
-			log.Fatalf("cannot open %v", filename)
+		//CallExample()
+		keepFlag := true
+		for keepFlag {
+			task := GetTask()
+			switch task.TaskType {
+			case MapTask:
+				{
+					DoMapTask(mapf, &task)
+					callDone()
+				}
+	
+			case WaittingTask:
+				{
+					fmt.Println("All tasks are in progress, please wait...")
+					time.Sleep(time.Second)
+				}
+			case ExitTask:
+				{
+					fmt.Println("Task about :[", task.TaskId, "] is terminated...")
+					keepFlag = false
+				}
+	
+			}
 		}
-		content, err := ioutil.ReadAll(file)
-		if err != nil {
-			log.Fatalf("cannot read %v", filename)
-		}
-		file.Close()
-		kva := mapf(filename, string(content))
-		intermediate = append(intermediate, kva...)
-		//... 是一个扩展操作符（variadic operator）。 扩展操作符的作用是将切片 kva 中的元素逐个展开，
-		//作为参数传递给 append 函数。
-		//这样可以将 kva 中的元素一个一个地追加到 intermediate 中，而不是将整个 kva 切片作为一个元素追加。
-	}
-
+	
+		// uncomment to send the Example RPC to the coordinator.
 }
 
 //
