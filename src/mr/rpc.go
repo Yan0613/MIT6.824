@@ -31,6 +31,7 @@ import "strconv"
 
 // Add your RPC definitions here.
 // Task worker向coordinator获取task的结构体
+// Task worker向coordinator获取task的结构体
 type Task struct {
 	TaskType   TaskType // 任务类型判断到底是map还是reduce
 	TaskId     int      // 任务的id
@@ -72,8 +73,6 @@ const (
 	Done                 // 此阶段已经做完
 )
 
-
-
 // Cook up a unique-ish UNIX-domain socket name
 // in /var/tmp, for the coordinator.
 // Can't use the current directory since
@@ -88,3 +87,16 @@ func coordinatorSock() string {
 // UNIX 域套接字是一种在同一台机器上的不同进程之间进行本地通信的机制。
 // 这个函数通过在文件路径中添加用户ID（通过 os.Getuid() 获取）来生成唯一的套接字名称。
 // 这个函数的返回值是一个字符串，表示套接字的路径
+
+func GetTask() Task {
+	args := TaskArgs{}
+	reply := Task{}
+	ok := call("coordinator.AssignTask",&args,&reply)
+	if ok {
+		fmt.Println(reply)
+	} else {
+		fmt.Println("get task failed!")
+	}
+
+	return reply
+}

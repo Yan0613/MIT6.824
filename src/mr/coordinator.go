@@ -170,3 +170,37 @@ func MakeCoordinator(files []string, nReduce int) *Coordinator {
 
 	return &c
 }
+
+// 分发任务
+func (c *Coordinator) PollTask(args *TaskArgs, reply *Task) error {
+	// 分发任务应该上锁，防止多个worker竞争，并用defer回退解锁
+	mu.Lock()
+	defer mu.Unlock()
+
+	// 判断任务类型存任务
+	switch c.DistPhase {
+	case MapPhase:
+		{
+			if len(c.TaskChannelMap) > 0 {
+				*reply = *<-c.TaskChannelMap
+				if !c.taskMetaHolder.judgeState(reply.TaskId) {
+					fmt.Printf("taskid[ %d ] is running\n", reply.TaskId)
+				}
+			} else {
+				reply.TaskType = WaittingTask // 如果map任务被分发完了但是又没完成，此时就将任务设为Waitting
+				if c.taskMetaHolder.checkTaskDone() {
+					c.toNextPhase()
+				}
+				return nil
+			}
+		}
+	default:
+		{
+			reply.TaskType = ExitTask
+		}
+
+	}
+
+	return nil
+}
+
