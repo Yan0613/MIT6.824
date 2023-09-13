@@ -4,7 +4,7 @@ MIT6.824(现6.5840)分布式系统lab1-lab4,渐进式实现一个KV分布式系�
 课程主页: <https://pdos.csail.mit.edu/6.824/labs/lab-mr.html>
 前置要求：Go语言基础，重点掌握管道相关知识；MapReduce论文
 
-### Lab1 MapReduce
+## Lab1 MapReduce
 
 Map是接收一组键值对，并且通过特定方式对其排序（在Lab1提到的word count例子中，键是词，值是词出现的次数，排序之后同一个词会集中出现）。
 Reduce则合并相同键的值，以word count为例，Reduce是将相同单词的值（即出现的次数）相加。
