@@ -161,7 +161,7 @@ func MakeCoordinator(files []string, nReduce int) *Coordinator {
 }
 
 // 分发任务
-func (c *Coordinator) PollTask(args *TaskArgs, reply *Task) error {
+func (c *Coordinator) AssignTask(args *TaskArgs, reply *Task) error {
 	// 分发任务应该上锁，防止多个worker竞争，并用defer回退解锁
 	mu.Lock()
 	defer mu.Unlock()
