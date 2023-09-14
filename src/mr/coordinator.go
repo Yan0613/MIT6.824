@@ -6,13 +6,17 @@ import "os"
 import "net/rpc"
 import "net/http"
 
+// 定义为全局，worker之间访问coordinator时加锁
+var (
+	mu sync.Mutex
+)
 
 type Coordinator struct {
 	// 输入文件列表
 	Files []string
 
 	// Reduce 任务数量
-	NReduce int
+	nReduce int
 
 	// Map 任务的状态和进度
 	MapTasks []TaskInfo
@@ -22,6 +26,12 @@ type Coordinator struct {
 
 	// 协调器的状态
 	Status CoordinatorStatus
+
+	//TaskID
+	TaskId int
+	ReduceTaskChannel chan *Task     // 使用chan保证并发安全
+	MapTaskChannel    chan *Task     // 使用chan保证并发安全
+	taskMetaHolder    TaskMetaHolder // 存着tas
 }
 
 // TaskInfo 表示一个任务的详细信息
