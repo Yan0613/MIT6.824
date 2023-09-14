@@ -130,17 +130,6 @@ func (c *Coordinator) Done() bool {
 func MakeCoordinator(files []string, nReduce int) *Coordinator {
 	c := Coordinator{}
 
-	// Your code here.
-
-
-	c.server()
-	return &c
-}
-
-
-func MakeCoordinator(files []string, nReduce int) *Coordinator {
-	c := Coordinator{}
-
 	// 初始化 Coordinator 对象的字段
 	c.files = files
 	c.nReduce = nReduce
