@@ -87,3 +87,42 @@ func coordinatorSock() string {
 // UNIX 域套接字是一种在同一台机器上的不同进程之间进行本地通信的机制。
 // 这个函数通过在文件路径中添加用户ID（通过 os.Getuid() 获取）来生成唯一的套接字名称。
 // 这个函数的返回值是一个字符串，表示套接字的路径
+
+
+
+package mr
+
+//
+// RPC definitions.
+//
+// remember to capitalize all names.
+//
+
+import "os"
+import "strconv"
+
+//
+// example to show how to declare the arguments
+// and reply for an RPC.
+//
+
+type ExampleArgs struct {
+	X int
+}
+
+type ExampleReply struct {
+	Y int
+}
+
+// Add your RPC definitions here.
+
+
+// Cook up a unique-ish UNIX-domain socket name
+// in /var/tmp, for the coordinator.
+// Can't use the current directory since
+// Athena AFS doesn't support UNIX-domain sockets.
+func coordinatorSock() string {
+	s := "/var/tmp/5840-mr-"
+	s += strconv.Itoa(os.Getuid())
+	return s
+}
