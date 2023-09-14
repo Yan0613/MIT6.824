@@ -60,29 +60,25 @@ const (
 //
 // the RPC argument and reply types are defined in rpc.go.
 //
-func (c *Coordinator) Example(args *ExampleArgs, reply *ExampleReply) error {
-	reply.Y = args.X + 1
-	return nil
-}
 
 
-func (c *Coordinator) server() {
-	// 注册 RPC 方法
-	rpc.Register(c)
-	rpc.HandleHTTP()
+// func (c *Coordinator) server() {
+// 	// 注册 RPC 方法
+// 	rpc.Register(c)
+// 	rpc.HandleHTTP()
 
-	// 使用 Unix 套接字创建监听器
-	sockname := coordinatorSock()
-	os.Remove(sockname) // 删除旧的套接字文件
-	l, e := net.Listen("unix", sockname)
-	if e != nil {
-		log.Fatal("listen error:", e)
-	}
-	defer l.Close()
+// 	// 使用 Unix 套接字创建监听器
+// 	sockname := coordinatorSock()
+// 	os.Remove(sockname) // 删除旧的套接字文件
+// 	l, e := net.Listen("unix", sockname)
+// 	if e != nil {
+// 		log.Fatal("listen error:", e)
+// 	}
+// 	defer l.Close()
 
-	// 启动 HTTP 服务器处理 RPC 请求
-	go http.Serve(l, nil)
-}
+// 	// 启动 HTTP 服务器处理 RPC 请求
+// 	go http.Serve(l, nil)
+// }
 
 
 //
