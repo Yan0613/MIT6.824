@@ -34,6 +34,18 @@ type Coordinator struct {
 	taskMetaHolder    TaskMetaHolder // 存着tas
 }
 
+// TaskMetaHolder 保存全部任务的元数据
+type TaskMetaHolder struct {
+	MetaMap map[int]*TaskMetaInfo // 通过下标hash快速定位
+}
+
+// TaskMetaInfo 保存任务的元数据
+type TaskMetaInfo struct {
+	state     State     // 任务的状态
+	TaskAdr   *Task     // 传入任务的指针,为的是这个任务从通道中取出来后，还能通过地址标记这个任务已经完成
+}
+
+
 // TaskInfo 表示一个任务的详细信息
 type TaskInfo struct {
 	TaskID    int

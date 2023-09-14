@@ -65,7 +65,18 @@ func Worker(mapf func(string, string) []KeyValue,
 }
 
 
+func GetTask() Task {
+	args := TaskArgs{}
+	reply := Task{}
+	ok := call("coordinator.AssignTask",&args,&reply)
+	if ok {
+		fmt.Println(reply)
+	} else {
+		fmt.Println("get task failed!")
+	}
 
+	return reply
+}
 
 //
 // send an RPC request to the coordinator, wait for the response.
@@ -94,21 +105,80 @@ func call(rpcname string, args interface{}, reply interface{}) bool {
 }
 
 
-func DoMapTask(mapf,&Task) {
+// func DoMapTask(mapf,&Task) {
 
-	intermediate := []mr.KeyValue{}
-	for _, filename := range os.Args[2:] {
-		file, err := os.Open(filename)
-		if err != nil {
-			log.Fatalf("cannot open %v", filename)
-		}
-		content, err := ioutil.ReadAll(file)
-		if err != nil {
-			log.Fatalf("cannot read %v", filename)
-		}
-		file.Close()
-		kva := mapf(filename, string(content))
-		intermediate = append(intermediate, kva...)
+// 	intermediate := []mr.KeyValue{}
+// 	for _, filename := range os.Args[2:] {
+// 		file, err := os.Open(filename)
+// 		if err != nil {
+// 			log.Fatalf("cannot open %v", filename)
+// 		}
+// 		content, err := ioutil.ReadAll(file)
+// 		if err != nil {
+// 			log.Fatalf("cannot read %v", filename)
+// 		}
+// 		file.Close()
+// 		kva := mapf(filename, string(content))
+// 		intermediate = append(intermediate, kva...)
+// 	}
+
+// }
+
+
+// 这段代码是一个 Go 语言函数 DoMapTask，它用于执行 Map 任务的核心逻辑。
+// 这个函数的主要功能是读取输入文件，将文件内容传递给指定的 mapf 函数进行处理，
+// 然后将处理结果按照哈希分区的方式存储到不同的临时文件中。
+
+func DoMapTask(mapf func(string, string) []KeyValue, response *Task) {
+	var intermediate []KeyValue
+	filename := response.Filename
+
+	file, err := os.Open(filename)
+	if err != nil {
+		log.Fatalf("cannot open %v", filename)
 	}
+	// 通过io工具包获取conten,作为mapf的参数
+	content, err := ioutil.ReadAll(file)
+	if err != nil {
+		log.Fatalf("cannot read %v", filename)
+	}
+	file.Close()
+	// map返回一组KV结构体数组
+	intermediate = mapf(filename, string(content))
+
+	//initialize and loop over []KeyValue
+	rn := response.ReducerNum
+	// 创建一个长度为nReduce的二维切片
+	HashedKV := make([][]KeyValue, rn)
+
+	for _, kv := range intermediate {
+		HashedKV[ihash(kv.Key)%rn] = append(HashedKV[ihash(kv.Key)%rn], kv)
+	}
+
+	for i := 0; i < rn; i++ {
+		oname := "mr-tmp-" + strconv.Itoa(response.TaskId) + "-" + strconv.Itoa(i)
+		ofile, _ := os.Create(oname)
+		enc := json.NewEncoder(ofile)
+		for _, kv := range HashedKV[i] {
+			enc.Encode(kv)
+		}
+		ofile.Close()
+	}
+
+}
+
+// callDone Call RPC to mark the task as completed
+func callDone() Task {
+
+	args := Task{}
+	reply := Task{}
+	ok := call("Coordinator.MarkFinished", &args, &reply)
+
+	if ok {
+		fmt.Println(reply)
+	} else {
+		fmt.Printf("call failed!\n")
+	}
+	return reply
 
 }
