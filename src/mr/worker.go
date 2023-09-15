@@ -63,7 +63,25 @@ func GetTask() Task {
 // DoMapTask performs the Map task.
 func DoMapTask(mapf func(string, string) []KeyValue, task *Task) {
 	// Implement Map task logic here.
-	// ...
+	intermediate := []mr.KeyValue{}
+
+	filename := task.Filename
+
+	file, err := os.Open(filename)
+	if err != nil {
+		log.Fatalf("cannot open %v", filename)
+	}
+	content, err := ioutil.ReadAll(file)
+	if err != nil {
+		log.Fatalf("cannot read %v", filename)
+	}
+	file.Close()
+	kva := mapf(filename, string(content))
+	intermediate = append(intermediate, kva...)
+	//... 是一个扩展操作符（variadic operator）。 扩展操作符的作用是将切片 kva 中的元素逐个展开，
+	//作为参数传递给 append 函数。
+	//这样可以将 kva 中的元素一个一个地追加到 intermediate 中，而不是将整个 kva 切片作为一个元素追加。
+	
 	// After processing, call callDone() to notify the coordinator of task completion.
 	callDone()
 }
@@ -71,7 +89,34 @@ func DoMapTask(mapf func(string, string) []KeyValue, task *Task) {
 // DoReduceTask performs the Reduce task.
 func DoReduceTask(reducef func(string, []string) string, task *Task) {
 	// Implement Reduce task logic here.
-	// ...
+	sort.Sort(ByKey(intermediate))
+
+	oname := "mr-out-0"
+	ofile, _ := os.Create(oname)
+
+	//
+	// call Reduce on each distinct key in intermediate[],
+	// and print the result to mr-out-0.
+	//
+	i := 0
+	for i < len(intermediate) {
+		j := i + 1
+		for j < len(intermediate) && intermediate[j].Key == intermediate[i].Key {
+			j++
+		}
+		values := []string{}
+		for k := i; k < j; k++ {
+			values = append(values, intermediate[k].Value)
+		}
+		output := reducef(intermediate[i].Key, values)
+
+		// this is the correct format for each line of Reduce output.
+		fmt.Fprintf(ofile, "%v %v\n", intermediate[i].Key, output)
+
+		i = j
+	}
+
+	ofile.Close()
 	// After processing, call callDone() to notify the coordinator of task completion.
 	callDone()
 }

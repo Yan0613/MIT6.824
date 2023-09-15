@@ -33,10 +33,11 @@ import "strconv"
 // Task worker向coordinator获取task的结构体
 // Task worker向coordinator获取task的结构体
 type Task struct {
-	TaskType   TaskType // 任务类型判断到底是map还是reduce
+	TaskType   int // 任务类型判断到底是map还是reduce
 	TaskId     int      // 任务的id
-	ReducerNum int      // 传入的reducer的数量，用于hash
+	ReducerNum int      // 传入的re	ducer的数量，用于hash
 	Filename   string   // 输入文件
+	Status     int      //任务状态
 }
 
 // TaskArgs rpc应该传入的参数，可实际上应该什么都不用传,因为只是worker获取一个任务
@@ -106,12 +107,12 @@ import "strconv"
 // and reply for an RPC.
 //
 
-type ExampleArgs struct {
-	X int
+type TaskArgs struct {
+
 }
 
-type ExampleReply struct {
-	Y int
+type TaskReply struct {
+
 }
 
 // Add your RPC definitions here.

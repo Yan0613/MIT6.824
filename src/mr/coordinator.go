@@ -26,8 +26,8 @@ type Coordinator struct {
 // the RPC argument and reply types are defined in rpc.go.
 //
 func (c *Coordinator) AssignTask(args *TaskArgs, reply *TaskReply) error {
-	reply.Y = args.X + 1
-	return nil
+
+	
 }
 
 
