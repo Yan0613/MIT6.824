@@ -1,7 +1,9 @@
 # MIT6.824
 
 MIT6.824(现6.5840)分布式系统lab1-lab4,渐进式实现一个KV分布式系统。
+
 课程主页: <https://pdos.csail.mit.edu/6.824/labs/lab-mr.html>
+
 前置要求：Go语言基础，重点掌握管道相关知识；MapReduce论文
 
 ## Lab1 MapReduce
