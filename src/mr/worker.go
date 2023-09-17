@@ -31,7 +31,7 @@ func ihash(key string) int {
 func Worker(mapf func(string, string) []KeyValue, reducef func(string, []string) string) {
 	for {
 		// Request a task from the coordinator.
-		task := CallTask()
+		task := GetTask()
 
 		switch task.TaskType {
 		case MapTask:
@@ -76,13 +76,25 @@ func DoMapTask(mapf func(string, string) []KeyValue, task *Task) {
 		log.Fatalf("cannot read %v", filename)
 	}
 	file.Close()
-	kva := mapf(filename, string(content))
-	intermediate = append(intermediate, kva...)
-	//... 是一个扩展操作符（variadic operator）。 扩展操作符的作用是将切片 kva 中的元素逐个展开，
-	//作为参数传递给 append 函数。
-	//这样可以将 kva 中的元素一个一个地追加到 intermediate 中，而不是将整个 kva 切片作为一个元素追加。
-	
-	// After processing, call callDone() to notify the coordinator of task completion.
+	intermediate = mapf(filename, string(content))
+
+	//initialize and loop over []KeyValue
+	rn := response.ReducerNum
+	// 创建一个长度为nReduce的二维切片
+	HashedKV := make([][]KeyValue, rn)
+
+	for _, kv := range intermediate {
+		HashedKV[ihash(kv.Key)%rn] = append(HashedKV[ihash(kv.Key)%rn], kv)
+	}
+	for i := 0; i < rn; i++ {
+		oname := "mr-tmp-" + strconv.Itoa(response.TaskId) + "-" + strconv.Itoa(i)
+		ofile, _ := os.Create(oname)
+		enc := json.NewEncoder(ofile)
+		for _, kv := range HashedKV[i] {
+			enc.Encode(kv)
+		}
+		ofile.Close()
+	}
 	callDone()
 }
 
