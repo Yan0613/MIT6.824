@@ -83,7 +83,24 @@ func (c *Coordinator) makeMapTasks(files []string) {
 }
 
 func MakeReduceTasks(c *Coordinator){
+	for i := 0; i < c.ReducerNum; i++ {
+		id := c.generateTaskId()
+		task := Task{
+			TaskId:    id,
+			TaskType:  ReduceTask,
+			FileSlice: selectReduceName(i),
+		}
 
+		// 保存任务的初始状态
+		taskMetaInfo := TaskMetaInfo{
+			state:   Waiting, // 任务等待被执行
+			TaskAdr: &task,   // 保存任务的地址
+		}
+		c.taskMetaHolder.acceptMeta(&taskMetaInfo)
+
+		//fmt.Println("make a reduce task :", &task)
+		c.ReduceTaskChannel <- &task
+	}
 }
 //
 // start a thread that listens for RPCs from worker.go
