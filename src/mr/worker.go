@@ -28,21 +28,18 @@ func ihash(key string) int {
 //
 // main/mrworker.go calls this function.
 //
-func Worker(mapf func(string, string) []KeyValue, reducef func(string, []string) string) {
-	for {
-		// Request a task from the coordinator.
-		task := GetTask()
+func Worker(mapf func(string, string) []KeyValue,
+	reducef func(string, []string) string) {
 
-		switch task.TaskType {
-		case MapTask:
-			DoMapTask(mapf, &task)
-		case ReduceTask:
-			DoReduceTask(reducef, &task)
-		case ExitTask:
-			fmt.Println("Worker exiting...")
-			return
-		}
+	for{
+		// Your worker implementation here.
+		task:= CallTask()
+
+		// uncomment to send the Task RPC to the coordinator.
+		DoMapTask(mapf,task.TaskAddr)
 	}
+
+
 }
 
 //
@@ -50,97 +47,27 @@ func Worker(mapf func(string, string) []KeyValue, reducef func(string, []string)
 //
 // the RPC argument and reply types are defined in rpc.go.
 //
-// GetTask requests a task from the coordinator.
-func GetTask() Task {
+func CallTask() TaskReply{
+
+	// declare an argument structure.
 	args := TaskArgs{}
+
+	// fill in the argument(s).
+	// declare a reply structure.
 	reply := TaskReply{}
+
+	// send the RPC request, wait for the reply.
+	// the "Coordinator.Task" tells the
+	// receiving server that we'd like to call
+	// the Task() method of struct Coordinator.
 	ok := call("Coordinator.AssignTask", &args, &reply)
-	if !ok {
-		log.Fatal("Failed to get a task from the coordinator.")
+	if ok {
+		// reply.Y should be 100.
+		fmt.Printf("%v\n", reply.TaskAddr.Filename)
+	} else {
+		fmt.Printf("call failed!\n")
 	}
 	return reply
-}
-// DoMapTask performs the Map task.
-func DoMapTask(mapf func(string, string) []KeyValue, task *Task) {
-	// Implement Map task logic here.
-	intermediate := []mr.KeyValue{}
-
-	filename := task.Filename
-
-	file, err := os.Open(filename)
-	if err != nil {
-		log.Fatalf("cannot open %v", filename)
-	}
-	content, err := ioutil.ReadAll(file)
-	if err != nil {
-		log.Fatalf("cannot read %v", filename)
-	}
-	file.Close()
-	intermediate = mapf(filename, string(content))
-
-	//initialize and loop over []KeyValue
-	rn := response.ReducerNum
-	// 创建一个长度为nReduce的二维切片
-	HashedKV := make([][]KeyValue, rn)
-
-	for _, kv := range intermediate {
-		HashedKV[ihash(kv.Key)%rn] = append(HashedKV[ihash(kv.Key)%rn], kv)
-	}
-	for i := 0; i < rn; i++ {
-		oname := "mr-tmp-" + strconv.Itoa(response.TaskId) + "-" + strconv.Itoa(i)
-		ofile, _ := os.Create(oname)
-		enc := json.NewEncoder(ofile)
-		for _, kv := range HashedKV[i] {
-			enc.Encode(kv)
-		}
-		ofile.Close()
-	}
-	callDone()
-}
-
-// DoReduceTask performs the Reduce task.
-func DoReduceTask(reducef func(string, []string) string, task *Task) {
-	// Implement Reduce task logic here.
-	sort.Sort(ByKey(intermediate))
-
-	oname := "mr-out-0"
-	ofile, _ := os.Create(oname)
-
-	//
-	// call Reduce on each distinct key in intermediate[],
-	// and print the result to mr-out-0.
-	//
-	i := 0
-	for i < len(intermediate) {
-		j := i + 1
-		for j < len(intermediate) && intermediate[j].Key == intermediate[i].Key {
-			j++
-		}
-		values := []string{}
-		for k := i; k < j; k++ {
-			values = append(values, intermediate[k].Value)
-		}
-		output := reducef(intermediate[i].Key, values)
-
-		// this is the correct format for each line of Reduce output.
-		fmt.Fprintf(ofile, "%v %v\n", intermediate[i].Key, output)
-
-		i = j
-	}
-
-	ofile.Close()
-	// After processing, call callDone() to notify the coordinator of task completion.
-	callDone()
-}
-
-// callDone notifies the coordinator of task completion.
-func callDone() {
-	args := Task{}
-	reply := Task{}
-	ok := call("Coordinator.MarkFinished", &args, &reply)
-	if !ok {
-		log.Fatal("Failed to notify the coordinator of task completion.")
-	}
 }
 //
 // send an RPC request to the coordinator, wait for the response.
@@ -163,4 +90,9 @@ func call(rpcname string, args interface{}, reply interface{}) bool {
 
 	fmt.Println(err)
 	return false
+}
+
+
+func DoMapTask(mapf func(string, string) []KeyValue, task *Task){
+
 }
