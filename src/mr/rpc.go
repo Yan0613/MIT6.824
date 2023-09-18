@@ -16,7 +16,7 @@ import "strconv"
 type Task struct{
 	Filename string
 	TaskType int
-	// TaskId int
+	TaskId int//一个task对应一个worker
 	ReduceNum int //reduce的数量
 	State int //0 start, 1 running ,2 2finish
 }

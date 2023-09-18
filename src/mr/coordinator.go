@@ -11,12 +11,9 @@ import "fmt"
 type Coordinator struct {
 	// Your definitions here.
 	State int //map stage or reduce stage? 0 start ,1 map , 2 reduce
-	NumMapWorkers int
-	NumReducerWorkers int
 	MapTask chan Task//很显然，这个地方是需要worker来取任务，因此此处必须保证线程的安全，go里面没有自己的队列实现，所以用channel
 	ReduceTask chan Task
 	Files []string
-	NumMapTask int
 	NumReduceTask int
 	MapTaskFin	chan bool
 	ReduceTaskFin chan bool
@@ -80,33 +77,42 @@ func (c *Coordinator) Done() bool {
 func MakeCoordinator(files []string, nReduce int) *Coordinator {
 	c := Coordinator{
 		State:0,
-		NumMapWorkers:3,
-		NumReducerWorkers:nReduce,
 		MapTask: make(chan Task,len(files)),
 		ReduceTask: make(chan Task,nReduce),
 		Files: files,
-		NumMapTask:0,
-		NumReduceTask:0,
+		NumReduceTask:nReduce,
 		MapTaskFin: make(chan bool,len(files)),
 		ReduceTaskFin: make(chan bool, nReduce),
 	}
 //make map task
-	for _, file := range (files) {
+	for id, file := range (files) {
 		// fmt.Println("%v", file)
-		task:=Task{
+		maptask:=Task{
 			Filename: file,
 			TaskType: 0,
-			// TaskId int
+			TaskId:id,
 			ReduceNum: nReduce, //reduce的数量
 			State :0,//0 start, 1 running ,2 finish, 3 waitting
 		}
 
-		c.MapTask <- task
+		c.MapTask <- maptask
 		fmt.Println("sucessefully make a map task!")
+		// c.NumMapTask = c.NumMapTask+1
+		// //make reduce tasks
+		// for _,i := range(nReduce) {
+		// 	reducetask:=Task{
+		// 		Filename: file,
+		// 		TaskType: 1,
+		// 		// TaskId int
+		// 		ReduceNum: nReduce, //reduce的数量
+		// 		State :0,//0 start, 1 running ,2 finish, 3 waitting
+		// 	}
+	
+		// 	c.ReduceTask <- reducetask
+		// 	fmt.Println("sucessefully make a reduce task!")
+		// 	c.NumReduceTask = c.NumReduceTask+1
+		// }
 	}
-
-	// Your code here.
-
 
 	c.server()
 	return &c

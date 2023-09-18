@@ -1,9 +1,16 @@
 package mr
 
-import "fmt"
-import "log"
-import "net/rpc"
-import "hash/fnv"
+import (
+	"fmt"
+	"hash/fnv"
+	"io/ioutil"
+	"log"
+	"net/rpc"
+	"os"
+	"encoding/json"
+	"strconv"
+)
+
 
 
 //
@@ -33,10 +40,10 @@ func Worker(mapf func(string, string) []KeyValue,
 
 	for{
 		// Your worker implementation here.
-		task:= CallTask()
+		task:= CallTask().TaskAddr
 
 		// uncomment to send the Task RPC to the coordinator.
-		DoMapTask(mapf,task.TaskAddr)
+		DoMapTask(mapf,task)// TASK is the address of task
 	}
 
 
@@ -63,7 +70,7 @@ func CallTask() TaskReply{
 	ok := call("Coordinator.AssignTask", &args, &reply)
 	if ok {
 		// reply.Y should be 100.
-		fmt.Printf("%v\n", reply.TaskAddr.Filename)
+		fmt.Printf("HERE IS CALL TASK,THE FILE NAME IS : %v\n", reply.TaskAddr.Filename)
 	} else {
 		fmt.Printf("call failed!\n")
 	}
@@ -94,5 +101,39 @@ func call(rpcname string, args interface{}, reply interface{}) bool {
 
 
 func DoMapTask(mapf func(string, string) []KeyValue, task *Task){
-
+	intermediate := []KeyValue{}
+	filename:= task.Filename
+	file, err := os.Open(filename)
+	if err != nil {
+		log.Fatalf("cannot open %v", filename)
+	}
+	content, err := ioutil.ReadAll(file)
+	if err != nil {
+		log.Fatalf("cannot read %v", filename)
+	}
+	file.Close()
+	intermediate = mapf(filename, string(content))
+	// NOW we got pairs of kv, we need to store and write them in temp files
+	reduceNum  := task.ReduceNum
+	HashKv := make([][]KeyValue, reduceNum)
+	for _, kv := range(intermediate) {
+		index := ihash(kv.Key) % reduceNum
+		HashKv[index] = append(HashKv[index], kv)	// 将该kv键值对放入对应的下标
+	}
+	// 放入中间文件
+	for i := 0; i < reduceNum; i++ {
+		filename := "mr-tmp" + strconv.Itoa(task.TaskId) + "-" + strconv.Itoa(i)
+		new_file, err := os.Create(filename)
+		if err != nil {
+			log.Fatal("create file failed:", err)
+		}
+		enc := json.NewEncoder(new_file)	// 创建一个新的JSON编码器
+		error := enc.Encode(HashKv[i])
+		if error != nil {
+			log.Fatal("encode failed:", err)
+		}
+		out_filename := "mr-" + strconv.Itoa(task.TaskId) + "-" + strconv.Itoa(i)
+		new_file.Close()
+		os.Rename(new_file.Name(), out_filename)
+	}
 }
