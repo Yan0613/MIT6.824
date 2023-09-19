@@ -15,10 +15,10 @@ import "strconv"
 //
 type Task struct{
 	Filename string
-	TaskType int
+	TaskType int//0 map,1 reduce
 	TaskId int//一个task对应一个worker
 	ReduceNum int //reduce的数量
-	State int //0 start, 1 running ,2 2finish
+	// State int //0 start, 1 running ,2 2finish
 }
 
 type TaskType int 
@@ -29,6 +29,11 @@ type TaskArgs struct {
 
 type TaskReply struct {
 	TaskAddr  *Task
+	MapTaskNum int
+	ReduceTaskNum int
+	// MapTaskFin	chan bool
+	// ReduceTaskFin chan bool
+	State int
 }
 
 // Add your RPC definitions here.
