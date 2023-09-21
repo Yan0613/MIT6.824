@@ -159,6 +159,6 @@ func (c *Coordinator)MarkDoneTask(args *TaskArgs, reply *TaskReply) error{
 	}else if len(c.ReduceTaskFin) == c.NumReduceTask{
 			c.State = 2
 		}
-	}
+	
 	return nil
 }
