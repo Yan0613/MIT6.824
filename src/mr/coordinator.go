@@ -114,20 +114,20 @@ func MakeCoordinator(files []string, nReduce int) *Coordinator {
 			c.MapTaskNum++
 			fmt.Println("sucessefully make a map task!")
 		}
-	}else if c.State == 1{
+	// }else if c.State == 1{
 		
-		//make reduce tasks
-		for id, file := range (files){
-			reducetask:=Task{
-				Filename: file,
-				TaskType: 1,
-				TaskId: id,
-				ReduceNum: nReduce, //reduce的数量
-			}
+	// 	//make reduce tasks
+	// 	for id, file := range (files){
+	// 		reducetask:=Task{
+	// 			Filename: file,
+	// 			TaskType: 1,
+	// 			TaskId: id,
+	// 			ReduceNum: nReduce, //reduce的数量
+	// 		}
 
-			c.ReduceTask <- reducetask
-			fmt.Println("sucessefully make a reduce task!")
-		}
+	// 		c.ReduceTask <- reducetask
+	// 		fmt.Println("sucessefully make a reduce task!")
+	// 	}
 	}
 
 	c.server()
