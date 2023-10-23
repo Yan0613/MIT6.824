@@ -10,6 +10,7 @@ import (
 	"encoding/json"
 	"strconv"
 	"sort"
+	// "time"
 )
 
 
@@ -52,6 +53,7 @@ func Worker(mapf func(string, string) []KeyValue,
 		// Your worker implementation here.
 		reply:= CallTask()
 		task:= reply.TaskAddr
+		fmt.Println("task:",task)
 		switch task.TaskType {
 			case 0: {
 				// uncomment to send the Task RPC to the coordinator.
@@ -61,11 +63,12 @@ func Worker(mapf func(string, string) []KeyValue,
 			case 1: {
 				DoReduceTask(reducef,reply)
 				TaskDone(reply)
-				if reply.State == 2{
-					break
-				}
 			}
 		}
+		if reply.State == 2{
+			break
+		}
+		// time.Sleep(time.Second)
 
 	}
 
@@ -93,7 +96,7 @@ func CallTask() TaskReply{
 	ok := call("Coordinator.AssignTask", &args, &reply)
 	if ok {
 		// reply.Y should be 100.
-		fmt.Printf("HERE IS CALL TASK,THE FILE NAME IS : %v\n", reply.TaskAddr.Filename)
+		fmt.Printf("Call sucessfully : %v\n", reply.TaskAddr.TaskType)
 	} else {
 		fmt.Printf("call failed!\n")
 	}
@@ -124,7 +127,7 @@ func call(rpcname string, args interface{}, reply interface{}) bool {
 
 
 func DoMapTask(mapf func(string, string) []KeyValue, reply TaskReply){
-	// intermediate := []KeyValue{}
+	var intermediate = []KeyValue{}
 	task:=reply.TaskAddr
 	filename:= task.Filename
 	file, err := os.Open(filename)
@@ -136,7 +139,7 @@ func DoMapTask(mapf func(string, string) []KeyValue, reply TaskReply){
 		log.Fatalf("cannot read %v", filename)
 	}
 	file.Close()
-	intermediate := mapf(filename, string(content))
+	intermediate = mapf(filename, string(content))
 	// NOW we got pairs of kv, we need to store and write them in temp files
 	reduceNum  := task.ReduceNum
 	HashKv := make([][]KeyValue, reduceNum)
@@ -172,7 +175,7 @@ func TaskDone(donereply TaskReply){
 
 	ok := call("Coordinator.MarkDoneTask", &args, &reply)
 	if ok {
-		fmt.Printf("HERE IS TASK DONE!")
+		fmt.Printf("task done!")
 	} else {
 		fmt.Printf("call failed!\n")
 	}
@@ -180,11 +183,11 @@ func TaskDone(donereply TaskReply){
 
 func DoReduceTask(reducef func(string, []string) string, reply TaskReply){
 	task := reply.TaskAddr
-	num_reduce := task.ReduceNum
+	num_map := reply.MapTaskNum
 	intermediate := []KeyValue{}
 	id := task.TaskId
-	for i:=0; i<num_reduce; i++{
-		map_filename := "mr-" + strconv.Itoa(id)+ "-" + strconv.Itoa(i)
+	for i:=0; i<num_map; i++{
+		map_filename := "mr-" + strconv.Itoa(i)+ "-" + strconv.Itoa(id)
 		inputfile,err := os.OpenFile(map_filename, os.O_RDONLY, 0777)
 		if err != nil{
 			log.Fatalf("OPEN MAP TEMP FILE '%v FAILED!", map_filename)
@@ -220,7 +223,6 @@ func DoReduceTask(reducef func(string, []string) string, reply TaskReply){
 
 		// this is the correct format for each line of Reduce output.
 		fmt.Fprintf(tmp_file, "%v %v\n", intermediate[i].Key, output)
-
 		i = j
 	}
 

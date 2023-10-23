@@ -13,7 +13,7 @@ type Coordinator struct {
 	State int //map stage or reduce stage? 0 start ,1 map , 2 reduce
 	MapTask chan Task//很显然，这个地方是需要worker来取任务，因此此处必须保证线程的安全，go里面没有自己的队列实现，所以用channel
 	MapTaskNum int
-	ReduceTaskNum int
+	AllReduceTaask int
 	ReduceTask chan Task
 	Files []string
 	NumReduceTask int
@@ -29,22 +29,26 @@ type Coordinator struct {
 // the RPC argument and reply types are defined in rpc.go.
 //
 func (c *Coordinator) AssignTask(args *TaskArgs, reply *TaskReply) error {
-	if len(c.MapTaskFin)!= c.MapTaskNum {
+	// mu.Lock()
+	// defer mu.Unlock()
+	if c.State == 0{
 		maptask, ok := <-c.MapTask
 		if ok{
 			reply.TaskAddr = &maptask
 			reply.MapTaskNum  = c.MapTaskNum
-			reply.ReduceTaskNum = c.ReduceTaskNum
+			reply.ReduceTaskNum = c.NumReduceTask
 			reply.State = c.State
 		} 
-	}else {
+	}else if c.State == 1{
 		reducetask, ok := <-c.ReduceTask
 		if ok{
 			reply.TaskAddr = &reducetask
 			reply.MapTaskNum  = c.MapTaskNum
-			reply.ReduceTaskNum = c.ReduceTaskNum
+			reply.ReduceTaskNum = c.NumReduceTask
 			reply.State = c.State
 		}
+	}else if c.State == 2{
+		
 	}
 
 	return nil
@@ -74,7 +78,7 @@ func (c *Coordinator) server() {
 func (c *Coordinator) Done() bool {
 	ret := false
 
-	if len(c.ReduceTaskFin )== c.NumReduceTask{
+	if len(c.ReduceTaskFin)== c.AllReduceTaask{
 		ret = true
 	}
 
@@ -91,45 +95,41 @@ func MakeCoordinator(files []string, nReduce int) *Coordinator {
 	c := Coordinator{
 		State:0,
 		MapTask: make(chan Task,len(files)),
-		ReduceTask: make(chan Task,len(files)*nReduce),
+		ReduceTask: make(chan Task,nReduce),
+		AllReduceTaask: nReduce,
 		Files: files,
-		MapTaskNum:0,
-		ReduceTaskNum:0,
+		MapTaskNum:len(files),
 		NumReduceTask:nReduce,
 		MapTaskFin: make(chan bool,len(files)),
 		ReduceTaskFin: make(chan bool, nReduce),
 	}
-	if c.State == 0{
+
 //make map task
-		for id, file := range (files) {
-			// fmt.Println("%v", file)
-			maptask:=Task{
-				Filename: file,
-				TaskType: 0,
-				TaskId:id,
-				ReduceNum: nReduce, //reduce的数量
-			}
-
-			c.MapTask <- maptask
-			c.MapTaskNum++
-			fmt.Println("sucessefully make a map task!")
+	for id, file := range (files) {
+		// fmt.Println("%v", file)
+		maptask:=Task{
+			Filename: file,
+			TaskType: 0,
+			TaskId:id,
+			ReduceNum: nReduce, //reduce的数量
 		}
-	// }else if c.State == 1{
-		
-	// 	//make reduce tasks
-	// 	for id, file := range (files){
-	// 		reducetask:=Task{
-	// 			Filename: file,
-	// 			TaskType: 1,
-	// 			TaskId: id,
-	// 			ReduceNum: nReduce, //reduce的数量
-	// 		}
 
-	// 		c.ReduceTask <- reducetask
-	// 		fmt.Println("sucessefully make a reduce task!")
-	// 	}
+		c.MapTask <- maptask
+	}
+	fmt.Println("sucessefully make all map tasks!")
+	
+//make reduce tasks
+
+	for i:=0;i<nReduce;i++{
+		reducetask:=Task{
+			TaskType: 1,
+			TaskId: i,
+			ReduceNum: nReduce, //reduce的数量
+		}
+		c.ReduceTask <- reducetask
 	}
 
+	fmt.Println("sucessefully make all reduce tasks!")
 	c.server()
 	return &c
 }
@@ -140,25 +140,17 @@ func MakeCoordinator(files []string, nReduce int) *Coordinator {
 func (c *Coordinator)MarkDoneTask(args *TaskArgs, reply *TaskReply) error{
 	if len(c.MapTaskFin)!= c.MapTaskNum {
 		c.MapTaskFin <- true
-	}else if len(c.MapTaskFin)== c.MapTaskNum && len(c.ReduceTaskFin) != c.NumReduceTask{
-		c.State =  1
-		nReduce := c.NumReduceTask
-		files := c.Files	
-	//make reduce tasks
-		for id, file := range (files){
-			reducetask:=Task{
-				Filename: file,
-				TaskType: 1,
-				TaskId: id,
-				ReduceNum: nReduce, //reduce的数量
-			}
-
-			c.ReduceTask <- reducetask
-			fmt.Println("sucessefully make a reduce task!")
+		if len(c.MapTaskFin) == c.MapTaskNum{
+			c.State = 1
+			fmt.Println("all map tasks are done, Start reduce stage")
 		}
-	}else if len(c.ReduceTaskFin) == c.NumReduceTask{
+	}else if len(c.MapTaskFin) == c.MapTaskNum&&len(c.ReduceTaskFin) != c.AllReduceTaask{
+		c.ReduceTaskFin <- true
+		if len(c.ReduceTaskFin) == c.AllReduceTaask{
 			c.State = 2
+			fmt.Println("all reduce tasks are done!")
 		}
+	}
 	
 	return nil
 }
