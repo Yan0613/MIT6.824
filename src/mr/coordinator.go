@@ -7,6 +7,8 @@ import "net/rpc"
 import "net/http"
 import "fmt"
 import "sync"
+import "time"
+
 
 
 var mu sync.Mutex
@@ -22,6 +24,8 @@ type Coordinator struct {
 	NumReduceTask int
 	MapTaskFin	chan bool
 	ReduceTaskFin chan bool
+	MapTaskCrashCheck chan TaskMeta
+	ReduceTaskCrashCheck chan TaskMeta
 }
 
 // Your code here -- RPC handlers for the worker to call.
@@ -38,8 +42,6 @@ func (c *Coordinator) AssignTask(args *TaskArgs, reply *TaskReply) error {
 		maptask, ok := <-c.MapTask
 		if ok{
 			reply.Task = maptask
-			// reply.MapTaskFin=c.MapTaskFin
-			// reply.ReduceTaskFin=c.ReduceTaskFin
 		} 
 	}else if len(c.ReduceTaskFin)!=c.NumReduceTask{
 		reducetask, ok := <-c.ReduceTask
@@ -104,6 +106,8 @@ func MakeCoordinator(files []string, nReduce int) *Coordinator {
 		NumReduceTask:nReduce,
 		MapTaskFin: make(chan bool,len(files)),
 		ReduceTaskFin: make(chan bool, nReduce),
+		MapTaskCrashCheck: make(chan TaskMeta,len(files)),
+		ReduceTaskCrashCheck: make(chan TaskMeta,nReduce),
 	}
 
 //make map task
@@ -117,9 +121,17 @@ func MakeCoordinator(files []string, nReduce int) *Coordinator {
 		}
 
 		c.MapTask <- maptask
+
+		taskMeta := TaskMeta{
+			Task:    maptask, // 将 task 赋值给 TaskMeta 结构的 Task 字段
+			TaskFin: false, // 设置 TaskFin 字段的值
+			TaskStartTime: time.Now().Unix(),
+		}
+		c.MapTaskCrashCheck <- taskMeta
+
 	}
 	fmt.Println("sucessefully make all map tasks!")
-	
+
 //make reduce tasks
 
 	for i:=0;i<nReduce;i++{
@@ -128,24 +140,50 @@ func MakeCoordinator(files []string, nReduce int) *Coordinator {
 			TaskId: i,
 			ReduceNum: nReduce, //reduce的数量
 		}
+
 		c.ReduceTask <- reducetask
+
+		taskMeta := TaskMeta{
+			Task:    reducetask, // 将 task 赋值给 TaskMeta 结构的 Task 字段
+			TaskFin: false, // 设置 TaskFin 字段的值
+			TaskStartTime: time.Now().Unix(),
+		}
+		c.ReduceTaskCrashCheck <- taskMeta
 	}
 
 	fmt.Println("sucessefully make all reduce tasks!")
+
 	c.server()
+//check crash test
+	// go c.CrashHandler()
+
 	return &c
 }
 
-func (c *Coordinator)MarkDoneTask(args *TaskArgs, reply *TaskReply) error{
+func (c *Coordinator)MarkDoneTask(args *Task, reply *TaskReply) error{
 
 	mu.Lock()
 	if len(c.MapTaskFin)!= c.MapTaskNum {
 		c.MapTaskFin <- true
+		// for mapmeta := range c.MapTaskCrashCheck {
+		// 	if mapmeta.Task.TaskId == args.TaskId {
+		// 		mapmeta.TaskFin = true
+		// 		break
+		// 	}
+		// }
+		fmt.Println("map task done num", len(c.MapTaskFin))
 		if len(c.MapTaskFin)== c.MapTaskNum {
 			c.State = 1
 		}
 	}else if len(c.ReduceTaskFin)!= c.NumReduceTask	{
 		c.ReduceTaskFin <- true
+		// for mapmeta := range c.ReduceTaskCrashCheck {
+		// 	if mapmeta.Task.TaskId == args.TaskId {
+		// 		mapmeta.TaskFin = true
+		// 		break
+		// 	}
+		// }
+		fmt.Println("reduce task done num", len(c.ReduceTaskFin))
 		if len(c.ReduceTaskFin)== c.NumReduceTask {
 			fmt.Println("all reduce tasks are done!")
 			c.State = 2
@@ -156,3 +194,30 @@ func (c *Coordinator)MarkDoneTask(args *TaskArgs, reply *TaskReply) error{
 	mu.Unlock()
 	return nil
 }
+
+
+// func(c* Coordinator) TimeTick(){
+// 	state := c.State
+// 	time_now := time.Now().Unix()
+// 	if state == 0 {
+// 		for metadata := range c.MapTaskCrashCheck {
+// 			if time_now - metadata.TaskStartTime > 10 && !metadata.TaskFin{
+// 				fmt.Println("map task crash check timeout")
+// 				//重发maptask
+// 				c.MapTask <- metadata.Task
+// 				metadata.TaskStartTime = time_now
+// 				metadata.TaskFin = false
+// 			}
+// 		}
+// 	}else if state == 1 {
+// 		for metadata := range c.ReduceTaskCrashCheck {
+// 			if time_now - metadata.TaskStartTime > 10 && !metadata.TaskFin{
+// 				fmt.Println("reduce task crash check timeout")
+// 				//重发reducetask
+// 				c.ReduceTask <- metadata.Task
+// 				metadata.TaskStartTime = time_now
+// 				metadata.TaskFin = false
+// 			}
+// 		}
+// 	}
+// }

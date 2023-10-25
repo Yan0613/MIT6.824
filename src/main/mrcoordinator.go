@@ -23,6 +23,7 @@ func main() {
 	m := mr.MakeCoordinator(os.Args[1:], 10)
 	for m.Done() == false {
 		time.Sleep(time.Second)
+		// m.TimeTick()
 	}
 
 	time.Sleep(time.Second)

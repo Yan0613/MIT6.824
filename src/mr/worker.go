@@ -11,6 +11,7 @@ import (
 	"strconv"
 	"sort"
 	"time"
+
 )
 
 
@@ -52,14 +53,15 @@ func Worker(mapf func(string, string) []KeyValue,
 		mu.Lock()
 		// Your worker implementation here.
 		reply:= CallTask()
-		if reply.State == 0{
+		state := reply.State
+		if state == 0 && reply.Task.TaskType == 0{
 			// uncomment to send the Task RPC to the coordinator.
 			DoMapTask(mapf,reply)// TASK is the address of task
-			TaskDone()
-		}else if reply.State == 1{
+			TaskDone(&reply.Task)
+		}else if state == 1 && reply.Task.TaskType == 1{
 			DoReduceTask(reducef,reply)
-			TaskDone()
-			if reply.State == 2{
+			TaskDone(&reply.Task)
+			if state == 2{
 				break
 			}
 		}else{
@@ -160,14 +162,12 @@ func DoMapTask(mapf func(string, string) []KeyValue, reply TaskReply){
 	}
 }
 
-func TaskDone(){
-
-	args := TaskArgs{}
+func TaskDone(args *Task){
 
 	// fill in the argument(s).
 	// declare a reply structure.
+	
 	reply := TaskReply{}
-
 	ok := call("Coordinator.MarkDoneTask", &args, &reply)
 	if ok {
 		fmt.Println("task done!")

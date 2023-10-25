@@ -9,6 +9,7 @@ package mr
 import "os"
 import "strconv"
 
+
 //
 // example to show how to declare the arguments
 // and reply for an RPC.
@@ -18,7 +19,12 @@ type Task struct{
 	TaskType int//0 map,1 reduce
 	TaskId int//一个task对应一个worker
 	ReduceNum int //reduce的数量
-	// State int //0 start, 1 running ,2 2finish
+}
+
+type TaskMeta struct{
+	Task Task
+	TaskFin bool//默认为false
+	TaskStartTime int64
 }
 
 type TaskType int 
@@ -31,8 +37,6 @@ type TaskReply struct {
 	Task 	   Task
 	MapTaskNum int
 	ReduceTaskNum int
-	MapTaskFin	chan bool
-	ReduceTaskFin chan bool
 	State 		int
 }
 
