@@ -6,7 +6,10 @@ import "os"
 import "net/rpc"
 import "net/http"
 import "fmt"
+import "sync"
 
+
+var mu sync.Mutex
 
 type Coordinator struct {
 	// Your definitions here.
@@ -29,28 +32,27 @@ type Coordinator struct {
 // the RPC argument and reply types are defined in rpc.go.
 //
 func (c *Coordinator) AssignTask(args *TaskArgs, reply *TaskReply) error {
-	// mu.Lock()
-	// defer mu.Unlock()
-	if c.State == 0{
+	var mu sync.Mutex
+	mu.Lock()
+	if len(c.MapTaskFin)!= c.MapTaskNum{
 		maptask, ok := <-c.MapTask
 		if ok{
-			reply.TaskAddr = &maptask
-			reply.MapTaskNum  = c.MapTaskNum
-			reply.ReduceTaskNum = c.NumReduceTask
-			reply.State = c.State
+			reply.Task = maptask
+			// reply.MapTaskFin=c.MapTaskFin
+			// reply.ReduceTaskFin=c.ReduceTaskFin
 		} 
-	}else if c.State == 1{
+	}else if len(c.ReduceTaskFin)!=c.NumReduceTask{
 		reducetask, ok := <-c.ReduceTask
 		if ok{
-			reply.TaskAddr = &reducetask
-			reply.MapTaskNum  = c.MapTaskNum
-			reply.ReduceTaskNum = c.NumReduceTask
-			reply.State = c.State
+			reply.Task = reducetask
 		}
-	}else if c.State == 2{
-		
 	}
-
+	//注意，这里三个值的传递要放在外面，因为在最后一个reducetask取出来之后管道是空的，不会执行ok里面的代码，状态得不到更新。
+	//
+	reply.MapTaskNum  = c.MapTaskNum
+	reply.ReduceTaskNum = c.NumReduceTask
+	reply.State = c.State
+	mu.Unlock()
 	return nil
 }
 
@@ -93,7 +95,7 @@ func (c *Coordinator) Done() bool {
 //
 func MakeCoordinator(files []string, nReduce int) *Coordinator {
 	c := Coordinator{
-		State:0,
+		State:0,  //0 map, 1 reduce, 2 finish
 		MapTask: make(chan Task,len(files)),
 		ReduceTask: make(chan Task,nReduce),
 		AllReduceTaask: nReduce,
@@ -134,23 +136,23 @@ func MakeCoordinator(files []string, nReduce int) *Coordinator {
 	return &c
 }
 
-
-
-
 func (c *Coordinator)MarkDoneTask(args *TaskArgs, reply *TaskReply) error{
+
+	mu.Lock()
 	if len(c.MapTaskFin)!= c.MapTaskNum {
 		c.MapTaskFin <- true
-		if len(c.MapTaskFin) == c.MapTaskNum{
+		if len(c.MapTaskFin)== c.MapTaskNum {
 			c.State = 1
-			fmt.Println("all map tasks are done, Start reduce stage")
 		}
-	}else if len(c.MapTaskFin) == c.MapTaskNum&&len(c.ReduceTaskFin) != c.AllReduceTaask{
+	}else if len(c.ReduceTaskFin)!= c.NumReduceTask	{
 		c.ReduceTaskFin <- true
-		if len(c.ReduceTaskFin) == c.AllReduceTaask{
-			c.State = 2
+		if len(c.ReduceTaskFin)== c.NumReduceTask {
 			fmt.Println("all reduce tasks are done!")
+			c.State = 2
 		}
+	}else{
+		c.State = 2
 	}
-	
+	mu.Unlock()
 	return nil
 }

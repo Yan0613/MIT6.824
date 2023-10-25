@@ -28,12 +28,12 @@ type TaskArgs struct {
 }
 
 type TaskReply struct {
-	TaskAddr  *Task
+	Task 	   Task
 	MapTaskNum int
 	ReduceTaskNum int
-	// MapTaskFin	chan bool
-	// ReduceTaskFin chan bool
-	State int
+	MapTaskFin	chan bool
+	ReduceTaskFin chan bool
+	State 		int
 }
 
 // Add your RPC definitions here.

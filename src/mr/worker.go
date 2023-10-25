@@ -10,9 +10,8 @@ import (
 	"encoding/json"
 	"strconv"
 	"sort"
-	// "time"
+	"time"
 )
-
 
 
 // for sorting by key.
@@ -50,29 +49,25 @@ func Worker(mapf func(string, string) []KeyValue,
 	reducef func(string, []string) string) {
 
 	for{
+		mu.Lock()
 		// Your worker implementation here.
 		reply:= CallTask()
-		task:= reply.TaskAddr
-		fmt.Println("task:",task)
-		switch task.TaskType {
-			case 0: {
-				// uncomment to send the Task RPC to the coordinator.
-				DoMapTask(mapf,reply)// TASK is the address of task
-				TaskDone(reply)
+		if reply.State == 0{
+			// uncomment to send the Task RPC to the coordinator.
+			DoMapTask(mapf,reply)// TASK is the address of task
+			TaskDone()
+		}else if reply.State == 1{
+			DoReduceTask(reducef,reply)
+			TaskDone()
+			if reply.State == 2{
+				break
 			}
-			case 1: {
-				DoReduceTask(reducef,reply)
-				TaskDone(reply)
-			}
-		}
-		if reply.State == 2{
+		}else{
 			break
 		}
-		// time.Sleep(time.Second)
-
+		time.Sleep(1000 * time.Millisecond)
+		mu.Unlock()
 	}
-
-
 }
 
 //
@@ -96,7 +91,7 @@ func CallTask() TaskReply{
 	ok := call("Coordinator.AssignTask", &args, &reply)
 	if ok {
 		// reply.Y should be 100.
-		fmt.Printf("Call sucessfully : %v\n", reply.TaskAddr.TaskType)
+		// fmt.Println("Call sucessfully :", reply.Task.TaskType)
 	} else {
 		fmt.Printf("call failed!\n")
 	}
@@ -128,7 +123,7 @@ func call(rpcname string, args interface{}, reply interface{}) bool {
 
 func DoMapTask(mapf func(string, string) []KeyValue, reply TaskReply){
 	var intermediate = []KeyValue{}
-	task:=reply.TaskAddr
+	task:=reply.Task
 	filename:= task.Filename
 	file, err := os.Open(filename)
 	if err != nil {
@@ -156,7 +151,7 @@ func DoMapTask(mapf func(string, string) []KeyValue, reply TaskReply){
 		}
 		enc := json.NewEncoder(new_file)	// 创建一个新的JSON编码器
 		for _, kv := range(HashKv[i]) {
-			err := enc.Encode(kv)
+			err := enc.Encode(&kv)
 			if err != nil {
 				log.Fatal("encode failed:", err)
 			}
@@ -165,7 +160,7 @@ func DoMapTask(mapf func(string, string) []KeyValue, reply TaskReply){
 	}
 }
 
-func TaskDone(donereply TaskReply){
+func TaskDone(){
 
 	args := TaskArgs{}
 
@@ -175,40 +170,45 @@ func TaskDone(donereply TaskReply){
 
 	ok := call("Coordinator.MarkDoneTask", &args, &reply)
 	if ok {
-		fmt.Printf("task done!")
+		fmt.Println("task done!")
 	} else {
-		fmt.Printf("call failed!\n")
+		fmt.Println("call failed!")
 	}
 }
 
 func DoReduceTask(reducef func(string, []string) string, reply TaskReply){
-	task := reply.TaskAddr
+	task := reply.Task
 	num_map := reply.MapTaskNum
 	intermediate := []KeyValue{}
 	id := task.TaskId
 	for i:=0; i<num_map; i++{
+		// fmt.Println(">>>>>>>>>>>>>>i", i)
 		map_filename := "mr-" + strconv.Itoa(i)+ "-" + strconv.Itoa(id)
+		// fmt.Println("map task id:", i, "map filename:", map_filename)
 		inputfile,err := os.OpenFile(map_filename, os.O_RDONLY, 0777)
 		if err != nil{
 			log.Fatalf("OPEN MAP TEMP FILE '%v FAILED!", map_filename)
 		}
 		dec := json.NewDecoder(inputfile)
 		for {
-			var kv []KeyValue
-			if err := dec.Decode(&kv); err!=nil{
+			var kv KeyValue
+			err := dec.Decode(&kv)
+			// fmt.Println("err:", err)
+			if err!=nil{
 				break
 			}
 
-			intermediate = append(intermediate, kv...)
+			intermediate = append(intermediate, kv)
+			// fmt.Println("intermediate:", intermediate)
 		}
 	}
-
+	// fmt.Println("intermediate:", intermediate)
 	sort.Sort(ByKey(intermediate))
 	out_file := "mr-out-" + strconv.Itoa(id)
 	tmp_file, err := ioutil.TempFile("", "mr-reduce-*")
 	if err != nil {
-		log.Fatalf("CANNOT OPNE TEMP FILE")
-	}
+		log.Fatalf("cannot open temp file")
+	}	
 	i := 0
 	for i < len(intermediate) {
 		j := i + 1
