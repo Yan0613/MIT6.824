@@ -24,8 +24,8 @@ type Coordinator struct {
 	NumReduceTask int
 	MapTaskFin	chan bool
 	ReduceTaskFin chan bool
-	MapTaskCrashCheck chan TaskMeta
-	ReduceTaskCrashCheck chan TaskMeta
+	MapTaskCrashCheck []TaskMeta
+	ReduceTaskCrashCheck []TaskMeta
 }
 
 // Your code here -- RPC handlers for the worker to call.
@@ -106,8 +106,8 @@ func MakeCoordinator(files []string, nReduce int) *Coordinator {
 		NumReduceTask:nReduce,
 		MapTaskFin: make(chan bool,len(files)),
 		ReduceTaskFin: make(chan bool, nReduce),
-		MapTaskCrashCheck: make(chan TaskMeta,len(files)),
-		ReduceTaskCrashCheck: make(chan TaskMeta,nReduce),
+		MapTaskCrashCheck:   make([]TaskMeta, len(files)),
+		ReduceTaskCrashCheck: make([]TaskMeta, nReduce),
 	}
 
 //make map task
@@ -127,7 +127,7 @@ func MakeCoordinator(files []string, nReduce int) *Coordinator {
 			TaskFin: false, // 设置 TaskFin 字段的值
 			TaskStartTime: time.Now().Unix(),
 		}
-		c.MapTaskCrashCheck <- taskMeta
+		c.MapTaskCrashCheck[id] = taskMeta
 
 	}
 	fmt.Println("sucessefully make all map tasks!")
@@ -148,7 +148,7 @@ func MakeCoordinator(files []string, nReduce int) *Coordinator {
 			TaskFin: false, // 设置 TaskFin 字段的值
 			TaskStartTime: time.Now().Unix(),
 		}
-		c.ReduceTaskCrashCheck <- taskMeta
+		c.ReduceTaskCrashCheck[i] = taskMeta
 	}
 
 	fmt.Println("sucessefully make all reduce tasks!")
@@ -165,24 +165,24 @@ func (c *Coordinator)MarkDoneTask(args *Task, reply *TaskReply) error{
 	mu.Lock()
 	if len(c.MapTaskFin)!= c.MapTaskNum {
 		c.MapTaskFin <- true
-		// for mapmeta := range c.MapTaskCrashCheck {
-		// 	if mapmeta.Task.TaskId == args.TaskId {
-		// 		mapmeta.TaskFin = true
-		// 		break
-		// 	}
-		// }
+		for i, mapmeta := range c.MapTaskCrashCheck {
+            if mapmeta.Task.TaskId == args.TaskId {
+                c.MapTaskCrashCheck[i].TaskFin = true
+                break
+            }
+        }
 		fmt.Println("map task done num", len(c.MapTaskFin))
 		if len(c.MapTaskFin)== c.MapTaskNum {
 			c.State = 1
 		}
 	}else if len(c.ReduceTaskFin)!= c.NumReduceTask	{
 		c.ReduceTaskFin <- true
-		// for mapmeta := range c.ReduceTaskCrashCheck {
-		// 	if mapmeta.Task.TaskId == args.TaskId {
-		// 		mapmeta.TaskFin = true
-		// 		break
-		// 	}
-		// }
+        for i, reduceta := range c.ReduceTaskCrashCheck {
+            if reduceta.Task.TaskId == args.TaskId {
+                c.ReduceTaskCrashCheck[i].TaskFin = true
+                break
+            }
+        }
 		fmt.Println("reduce task done num", len(c.ReduceTaskFin))
 		if len(c.ReduceTaskFin)== c.NumReduceTask {
 			fmt.Println("all reduce tasks are done!")
@@ -196,28 +196,28 @@ func (c *Coordinator)MarkDoneTask(args *Task, reply *TaskReply) error{
 }
 
 
-// func(c* Coordinator) TimeTick(){
-// 	state := c.State
-// 	time_now := time.Now().Unix()
-// 	if state == 0 {
-// 		for metadata := range c.MapTaskCrashCheck {
-// 			if time_now - metadata.TaskStartTime > 10 && !metadata.TaskFin{
-// 				fmt.Println("map task crash check timeout")
-// 				//重发maptask
-// 				c.MapTask <- metadata.Task
-// 				metadata.TaskStartTime = time_now
-// 				metadata.TaskFin = false
-// 			}
-// 		}
-// 	}else if state == 1 {
-// 		for metadata := range c.ReduceTaskCrashCheck {
-// 			if time_now - metadata.TaskStartTime > 10 && !metadata.TaskFin{
-// 				fmt.Println("reduce task crash check timeout")
-// 				//重发reducetask
-// 				c.ReduceTask <- metadata.Task
-// 				metadata.TaskStartTime = time_now
-// 				metadata.TaskFin = false
-// 			}
-// 		}
-// 	}
-// }
+func(c* Coordinator) TimeTick(){
+	state := c.State
+	time_now := time.Now().Unix()
+	if state == 0 {
+        for i, metadata := range c.MapTaskCrashCheck {
+            if time_now-metadata.TaskStartTime > 10 && !metadata.TaskFin {
+                fmt.Println("map task crash check timeout")
+                // 重发 maptask
+                c.MapTask <- metadata.Task
+                c.MapTaskCrashCheck[i].TaskStartTime = time_now
+                c.MapTaskCrashCheck[i].TaskFin = false
+            }
+        }
+	}else if state == 1 {
+		for i, metadata := range c.ReduceTaskCrashCheck {
+            if time_now-metadata.TaskStartTime > 10 && !metadata.TaskFin {
+                fmt.Println("reduce task crash check timeout")
+                // 重发 reducetask
+                c.ReduceTask <- metadata.Task
+                c.ReduceTaskCrashCheck[i].TaskStartTime = time_now
+                c.ReduceTaskCrashCheck[i].TaskFin = false
+            }
+        }
+	}
+}

@@ -95,6 +95,7 @@ sleep 1
 (maybe_quiet $TIMEOUT ../mrworker ../../mrapps/wc.so) &
 (maybe_quiet $TIMEOUT ../mrworker ../../mrapps/wc.so) &
 
+
 # wait for the coordinator to exit.
 wait $pid
 
@@ -293,6 +294,8 @@ rm -f mr-done
 sleep 1
 
 # start multiple workers
+maybe_quiet $TIMEOUT2 ../mrworker ../../mrapps/crash.so &
+maybe_quiet $TIMEOUT2 ../mrworker ../../mrapps/crash.so &
 maybe_quiet $TIMEOUT2 ../mrworker ../../mrapps/crash.so &
 
 # mimic rpc.go's coordinatorSock()
