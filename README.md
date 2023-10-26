@@ -17,10 +17,10 @@ Reduce则合并相同键的值，以word count为例，Reduce是将相同单词�
 - 获得reduce任务的Worker，通过远程调用请求数据，数据加载完毕后，对数据进行排序，之后遍历数据，将相同key的数据进行合并，最终输出结果；
 - 当所有的map和reduce任务完成了，整个MapReduce程序就处理完毕了，Worker得到处理后的数据，通常会保存在不同的小文件中，合并这些文件之后就是最重要的结果。
 
-![Alt text](images/shixv.png)
+![Alt text](images/image-shixv.png)
 
 - Map阶段成功输出中间文件：
-     
+  
 ```json
      {"Key":"Being","Value":"1"}
      {"Key":"it","Value":"1"}
@@ -33,8 +33,8 @@ Reduce则合并相同键的值，以word count为例，Reduce是将相同单词�
      {"Key":"SCENES","Value":"1"}
      {"Key":"W","Value":"1"}
      ......
-     ```
-     
+```
+
 - Reduce阶段成功输出**mr-out-***
 
      ```json
