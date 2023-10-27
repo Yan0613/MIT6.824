@@ -35,15 +35,6 @@ Reduce则合并相同键的值，以word count为例，Reduce是将相同单词�
 ```
 
 - Reduce阶段成功输出**mr-out-***
-```json
-     Conan 3
-     Concorde 1
-     Confess 1
-     Constantinople 4
-     Contentment 1
-     Contested 1
-     Coosa 1
-```
 #### 困难与思考：
 
 1. map过程生成的中间文件到了reduce阶段没办法解码，发现是reduce阶段decoder应该直接解码到kv
