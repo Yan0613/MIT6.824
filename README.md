@@ -4,7 +4,7 @@ MIT6.824(现6.5840)分布式系统lab1-lab4，渐进式实现一个KV分布式�
 
 课程主页: <https://pdos.csail.mit.edu/6.824/labs/lab-mr.html>
 
-前置要求：Go语言基础，重点掌握管道相关知识，MapReduce论文
+前置要求：Go语言基础(Lec2 go crawler demo:<https://go.dev/tour/concurrency/1>)，重点掌握管道相关知识，MapReduce论文
 
 ## Lab1 MapReduce
 
@@ -57,9 +57,7 @@ Reduce则合并相同键的值，以word count为例，Reduce是将相同单词�
      ......
      ```
 
-     
-
-#### 困难与思考：
+#### 困难与思考
 
 1. map过程生成的中间文件到了reduce阶段没办法解码，发现是reduce阶段decoder应该直接解码到kv
    最后一个crash test fail, 原因可能是在向maptaskfin管道发送完成信息的时候，worker还在向maptaskchan取任务，但是实际上此时管道内已经没有任务可以取出来了。
@@ -79,8 +77,6 @@ for {
 2. 为实现整个系统运行的稳定性，代码要实现检测worker超时相应的功能，超过10s未完成则重发任务，为此编写timetick函数，**每隔一秒钟coordinator都要检查一次**。一开始用chan存储task的开始时间和对应的task（出于线程安全的考虑），在遍历chan的时候却发现无法跳出遍历循环，因为go的channel是没有元素也会一直去取，而且更严重的问题是，每次取出一个task检查运行时间，如果未超时都要重新放进去，程序执行效率低下。因此改用数组存储，虽然目前没有发现线程安全引发的问题，但是仍然想尝试用一种更加优雅、最大保证线程安全的办法。
 
 3. 第二点里面提到检查用的是timetick函数，一秒钟检查一次，其实还可以用go的特性goroutine实现，并发执行不影响其他的进程。
-
-   
 
 ## Lab2 Raft
 
