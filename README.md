@@ -4,10 +4,12 @@ MIT6.824(现6.5840)分布式系统lab1-lab4，渐进式实现一个KV分布式�
 
 课程主页: <https://pdos.csail.mit.edu/6.824/labs/lab-mr.html>
 
-前置要求：Go语言基础(Lec2 go crawler demo:<https://go.dev/tour/concurrency/1>)，重点掌握管道相关知识，MapReduce论文
 
-## Lab1 MapReduce
+## Lab1 MapReduce 
+### 前置要求
+Go语言基础(Lec2 go crawler demo:<https://go.dev/tour/concurrency/1>)，重点掌握管道相关知识，MapReduce论文
 
+### MapReduce解析
 Map是接收一组键值对，并且通过特定方式对其排序（在Lab1提到的word count例子中，键是词，值是词出现的次数，排序之后同一个词会集中出现）。
 Reduce则合并相同键的值，以word count为例，Reduce是将相同单词的值（即出现的次数）相加。
 ![Alt text](images/image.png)
@@ -17,6 +19,7 @@ Reduce则合并相同键的值，以word count为例，Reduce是将相同单词�
 - 获得reduce任务的Worker，通过远程调用请求数据，数据加载完毕后，对数据进行排序，之后遍历数据，将相同key的数据进行合并，最终输出结果；
 - 当所有的map和reduce任务完成了，整个MapReduce程序就处理完毕了，Worker得到处理后的数据，通常会保存在不同的小文件中，合并这些文件之后就是最重要的结果。
 
+### 实验过程
 ![Alt text](images/image-shixv.png)
 
 - Map阶段成功输出中间文件：
@@ -35,7 +38,6 @@ Reduce则合并相同键的值，以word count为例，Reduce是将相同单词�
 ```
 
 - Reduce阶段成功输出**mr-out-***
-<<<<<<< HEAD
 
      ```json
      Conan 3
@@ -58,9 +60,6 @@ Reduce则合并相同键的值，以word count为例，Reduce是将相同单词�
      ```
 
 #### 困难与思考
-=======
-#### 困难与思考：
->>>>>>> a59e3b76db66fbbb0ae1b6dddefc70b01300fd7b
 
 1. map过程生成的中间文件到了reduce阶段没办法解码，发现是reduce阶段decoder应该直接解码到kv
    最后一个crash test fail, 原因可能是在向maptaskfin管道发送完成信息的时候，worker还在向maptaskchan取任务，但是实际上此时管道内已经没有任务可以取出来了。
