@@ -39,25 +39,14 @@ Reduce则合并相同键的值，以word count为例，Reduce是将相同单词�
 
 - Reduce阶段成功输出**mr-out-***
 
-     ```json
+ ```c
      Conan 3
      Concorde 1
      Confess 1
      Constantinople 4
      Contentment 1
      Contested 1
-     Coosa 1
-     Could 17
-     Couldn 4
-     Count 3
-     Courtship 1
-     Crane 1
-     Creep 1
-     Cure 1
-     Cyril 1
-     DISTRIBUTE 8
-     ......
-     ```
+```
 
 #### 困难与思考
 
