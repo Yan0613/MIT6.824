@@ -28,6 +28,12 @@ import (
 	"6.5840/labrpc"
 )
 
+const (
+	STATE_FOLLOWER = iota
+	STATE_CANDIDATE
+	STATE_LEADER
+)
+
 
 // as each Raft peer becomes aware that successive log entries are
 // committed, the peer should send an ApplyMsg to the service (or
@@ -53,10 +59,18 @@ type ApplyMsg struct {
 // A Go object implementing a single Raft peer.
 type Raft struct {
 	mu        sync.Mutex          // Lock to protect shared access to this peer's state
-	peers     []*labrpc.ClientEnd // RPC end points of all peers
+	peers     [] *labrpc.ClientEnd // RPC end points of all peers
 	persister *Persister          // Object to hold this peer's persisted state
 	me        int                 // this peer's index into peers[]
 	dead      int32               // set by Kill()
+	currentTerm int		      //current term
+	votedFor	int
+	state		int
+	// log			[]LogEntry
+	// commitIndex int
+	// lastApplied int
+	// nextIndex	[]int
+	// matchIndex	[]int
 
 	// Your data here (2A, 2B, 2C).
 	// Look at the paper's Figure 2 for a description of what
@@ -128,19 +142,54 @@ func (rf *Raft) Snapshot(index int, snapshot []byte) {
 // field names must start with capital letters!
 type RequestVoteArgs struct {
 	// Your data here (2A, 2B).
+	Term int
+	CandidateId int
+	LastLogIndex int	
+	LastLogTerm int
 }
 
 // example RequestVote RPC reply structure.
 // field names must start with capital letters!
 type RequestVoteReply struct {
+	Term int
+	VoteGranted bool
 	// Your data here (2A).
 }
 
 // example RequestVote RPC handler.
 func (rf *Raft) RequestVote(args *RequestVoteArgs, reply *RequestVoteReply) {
+	rf.mu.Lock()
+	if args.Term < rf.currentTerm{
+		reply.VoteGranted = false
+	} else{
+		reply.VoteGranted = true
+	}
+
+	reply.Term = rf.currentTerm
+	rf.mu.Unlock()
 	// Your code here (2A, 2B).
 }
 
+type AppendEntiresArgs struct {
+	// Your data here (2A, 2B).
+	Term int
+	LeaderId int
+	PrevLogIndex int
+	PrevLogTerm int
+	// entries []LogEntry
+	LeaderCommit int
+}
+
+// example RequestVote RPC reply structure.
+// field names must start with capital letters!
+type AppendEntiresReply struct {
+	Term int
+	Success bool
+	// Your data here (2A).
+}
+func (rf *Raft) AppendEntires(args *AppendEntiresArgs, reply *AppendEntiresReply) {
+
+}
 // example code to send a RequestVote RPC to a server.
 // server is the index of the target server in rf.peers[].
 // expects RPC arguments in args.
@@ -245,9 +294,15 @@ func Make(peers []*labrpc.ClientEnd, me int,
 	rf.peers = peers
 	rf.persister = persister
 	rf.me = me
+	rf.state  = STATE_FOLLOWER
 
 	// Your initialization code here (2A, 2B, 2C).
-
+	rf.currentTerm = 0
+	args := RequestVoteArgs{Term: rf.currentTerm, CandidateId: me}
+	for i := 0; i < len(peers); i++ {
+		reply := RequestVoteReply{}
+		go rf.sendRequestVote(i, &args, &reply)
+	}
 	// initialize from state persisted before a crash
 	rf.readPersist(persister.ReadRaftState())
 
@@ -256,4 +311,17 @@ func Make(peers []*labrpc.ClientEnd, me int,
 
 
 	return rf
+}
+
+func startElection(rf *Raft) {
+	rf.mu.Lock()
+	defer rf.mu.Unlock()
+	rf.state = STATE_CANDIDATE
+	rf.currentTerm++
+	rf.votedFor = rf.me
+}
+
+func randomTime() time.Duration{
+	r := rand.New(rand.NewSource(time.Now().UnixNano())) 
+	return time.Microsecond * time.Duration((r.Intn(150)  + 350))
 }
