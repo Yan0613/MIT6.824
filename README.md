@@ -70,6 +70,8 @@ for {
 3. 第二点里面提到检查用的是timetick函数，一秒钟检查一次，其实还可以用go的特性goroutine实现，并发执行不影响其他的进程。
 
 ## Lab2 Raft
-
+### 参考资料
+Raft官网: https://raft.github.io/
+图形化教程：http://thesecretlivesofdata.com/raft/
 Raft是一个分布式一致性算法，用于在分布式系统中实现一致性状态机，保证分布式系统的一致性。
 ![Alt text](images/RAFT.png)
