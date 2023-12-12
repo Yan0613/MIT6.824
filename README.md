@@ -72,3 +72,4 @@ for {
 ## Lab2 Raft
 
 Raft是一个分布式一致性算法，用于在分布式系统中实现一致性状态机，保证分布式系统的一致性。
+![Alt text](images/RAFT.png)
