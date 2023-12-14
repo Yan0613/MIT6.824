@@ -79,3 +79,8 @@ Raft官网: https://raft.github.io/
 - 实现一个Raft算法
 Raft是一个分布式一致性算法，用于在分布式系统中实现一致性状态机，保证分布式系统的一致性。
 ![Alt text](images/RAFT.png)
+文件目录结构及说明：
+persister.go , 一个简易版的持久化器，用于保存Raft协议状态和K/V服务器的快照。在 Raft 共识算法中，节点需要保存持久化状态，以便在发生故障或重启后能够恢复到先前的状态。
+raft.go , Raft 共识算法的主要逻辑实现。
+raft_test.go , 测试用例。
+util.go , 一些工具函数。
