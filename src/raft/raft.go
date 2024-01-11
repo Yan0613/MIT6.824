@@ -100,11 +100,12 @@ type Raft struct {
 	term            int
 	votedFor        int
 	log             []*LogEntry
-	lastHeartbeat   time.Time
-	electionTimeout time.Duration
-
+	lastHeartbeat   time.Time//在 Raft 协议中，节点之间通过定期发送心跳消息来维持领导权。lastHeartbeat 记录了节点最后一次接收到心跳消息的时间。如果节点长时间没有接收到心跳消息，可能会启动新一轮选举以选出新的领导者。
+	electionTimeout time.Duration//Raft 协议规定了一个选举超时时间，用于确定何时启动一轮新的选举。节点在等待接收心跳消息的时间超过了 electionTimeout，就会认为当前的领导者可能已经失效，从而发起选举。选举超时的时间通常是一个随机值，以避免多个节点同时启动选举。
+//----------针对状态机-----------------------
 	commitIndex   int
 	lastApplied   int
+//---------针对raft节点---------------------
 	applyCond     *sync.Cond
 	nextIndex     []int
 	matchIndex    []int
@@ -185,7 +186,7 @@ func (rf *Raft) persist() {
 	rf.Debug(dPersist, "persist: %s", rf.FormatStateOnly())
 	rf.persister.SaveRaftState(rf.serializeState())
 }
-
+//将Raft节点的状态进行序列化，以便可以将其存储到持久化存储中。
 func (rf *Raft) serializeState() []byte {
 	w := new(bytes.Buffer)
 	e := labgob.NewEncoder(w)
@@ -555,7 +556,7 @@ func (rf *Raft) sendInstallSnapshot(server int, args *InstallSnapshotArgs, reply
 const (
 	ElectionTimeoutMax = int64(600 * time.Millisecond)
 	ElectionTimeoutMin = int64(500 * time.Millisecond)
-	HeartbeatInterval  = 100 * time.Millisecond
+	HeartbeatInterval  = 100 * time.Millisecond//控制心跳的发送频率
 )
 
 func NextElectionTimeout() time.Duration {
@@ -622,7 +623,7 @@ func (rf *Raft) DoElection() {
 							rf.matchIndex[rf.me] = rf.LogTail().Index
 							rf.Debug(dLeader, "majority vote (%d/%d) received, turning Leader  %s", vote, len(rf.peers), rf.FormatState())
 							rf.becomeLeader()
-							rf.BroadcastHeartbeat()
+							rf.BroadcastHeartbeat()//选举成功，开始发送心跳
 						}
 					}
 				}(i, args)
@@ -901,7 +902,7 @@ func (rf *Raft) Sync(peer int, args *AppendEntriesArgs) {
 // if it's ever committed. the second return value is the current
 // term. the third return value is true if this server believes it is
 // the leader.
-//
+//实现了 Raft 节点接收客户端命令并将其添加到日志中的逻辑
 func (rf *Raft) Start(command interface{}) (int, int, bool) {
 	rf.mu.Lock()
 	defer rf.mu.Unlock()
@@ -964,7 +965,7 @@ func (rf *Raft) killed() bool {
 // tester or service expects Raft to send ApplyMsg messages.
 // Make() must return quickly, so it should start goroutines
 // for any long-running work.
-//
+//other raft servers are passed by peers array.
 func Make(peers []*labrpc.ClientEnd, me int,
 	persister *Persister, applyCh chan ApplyMsg) *Raft {
 	rf := &Raft{}
