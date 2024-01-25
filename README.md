@@ -84,3 +84,6 @@ persister.go , 一个简易版的持久化器，用于保存Raft协议状态和K
 raft.go , Raft 共识算法的主要逻辑实现。
 raft_test.go , 测试用例。
 util.go , 一些工具函数。
+
+## Lab3
+![Alt text](images/总体架构.png)
